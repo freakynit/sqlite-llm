@@ -1,0 +1,17 @@
+{
+  "name": "sqlite-llm",
+  "version": "0.1.0",
+  "description": "Natural-language API for querying configured SQLite databases with an LLM-generated SQL loop.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^5.2.1",
+    "openai": "^4.67.0",
+    "yaml": "^2.9.0"
+  }
+}

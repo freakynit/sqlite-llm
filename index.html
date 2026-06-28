@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sqlite-llm</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7f4;
+        --surface: #ffffff;
+        --surface-2: #f0f3ef;
+        --ink: #111413;
+        --muted: #65706d;
+        --line: #dce3de;
+        --accent: #0f766e;
+        --accent-strong: #0b5f59;
+        --accent-soft: #d9f2ed;
+        --warn: #b45309;
+        --danger: #b42318;
+        --shadow: 0 18px 50px rgba(17, 20, 19, 0.08);
+        --radius: 8px;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.62;
+      }
+
+      .shell {
+        width: min(1440px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 24px 0 32px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .mark {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border-radius: var(--radius);
+        background: #111413;
+        color: #ffffff;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 3vw, 38px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .subhead {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--muted);
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--warn);
+        box-shadow: 0 0 0 4px rgba(180, 83, 9, 0.12);
+      }
+
+      .dot.ok {
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: var(--shadow);
+      }
+
+      .query-panel {
+        position: sticky;
+        top: 18px;
+        padding: 18px;
+      }
+
+      .field-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #313835;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      textarea {
+        display: block;
+        width: 100%;
+        min-height: 172px;
+        resize: vertical;
+        border: 1px solid #cfd9d3;
+        border-radius: var(--radius);
+        padding: 14px;
+        background: #fbfcfa;
+        color: var(--ink);
+        line-height: 1.45;
+        outline: none;
+      }
+
+      textarea:focus,
+      input:focus,
+      select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #ffffff;
+        font-weight: 750;
+      }
+
+      .primary:hover {
+        background: var(--accent-strong);
+      }
+
+      .secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #ffffff;
+        color: #303735;
+        font-weight: 700;
+      }
+
+      .secondary:hover {
+        border-color: #b7c4bd;
+        background: #f8faf8;
+      }
+
+      .spinner {
+        display: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(15, 118, 110, 0.24);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .is-loading .spinner {
+        display: block;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .meta-block {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .pill,
+      .example {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+        color: #303735;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 730;
+      }
+
+      .example {
+        padding: 8px 11px;
+        text-align: left;
+        line-height: 1.25;
+      }
+
+      .example:hover {
+        border-color: var(--accent);
+        color: var(--accent-strong);
+      }
+
+      .notice {
+        margin-top: 14px;
+        padding: 11px 12px;
+        border: 1px solid #f0d2a8;
+        border-radius: var(--radius);
+        background: #fff7ed;
+        color: #7c3f05;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .results-panel {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .sql-block {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--line);
+        background: #fbfcfa;
+      }
+
+      .sql-block[hidden] {
+        display: none;
+      }
+
+      .sql-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .sql-title {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sql-code {
+        margin: 0;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #ffffff;
+        color: #1e2422;
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 220px;
+        overflow: auto;
+      }
+
+      .results-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .results-title {
+        min-width: 0;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: 0;
+      }
+
+      .result-count {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .tools {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .search {
+        width: min(290px, 42vw);
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 0 11px;
+        background: #ffffff;
+        outline: none;
+      }
+
+      select {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 0 10px;
+        background: #ffffff;
+        color: var(--ink);
+        outline: none;
+      }
+
+      .table-wrap {
+        max-height: calc(100vh - 232px);
+        min-height: 360px;
+        overflow: auto;
+        background: #ffffff;
+      }
+
+      table {
+        width: 100%;
+        min-width: 720px;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #edf1ee;
+        padding: 11px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #f7faf8;
+        color: #3b4541;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        user-select: none;
+      }
+
+      th button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        background: transparent;
+        color: inherit;
+        font-weight: inherit;
+        text-transform: inherit;
+        letter-spacing: inherit;
+        text-align: left;
+      }
+
+      tbody tr:hover {
+        background: #fbfdfb;
+      }
+
+      td {
+        max-width: 360px;
+        color: #1e2422;
+        line-height: 1.4;
+      }
+
+      .cell {
+        display: block;
+        max-height: 7.2em;
+        overflow: auto;
+        overflow-wrap: anywhere;
+      }
+
+      .numeric {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .null {
+        color: #98a29e;
+        font-style: italic;
+      }
+
+      a {
+        color: var(--accent-strong);
+        font-weight: 700;
+      }
+
+      .empty-state,
+      .error-state {
+        display: grid;
+        min-height: 360px;
+        place-items: center;
+        padding: 36px;
+        text-align: center;
+      }
+
+      .empty-box {
+        max-width: 480px;
+      }
+
+      .empty-box strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 18px;
+      }
+
+      .empty-box span {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .error-state {
+        color: var(--danger);
+      }
+
+      .footer-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 18px;
+        border-top: 1px solid var(--line);
+        background: #fbfcfa;
+      }
+
+      .pager {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .page-label {
+        color: var(--muted);
+        font-size: 13px;
+        min-width: 116px;
+        text-align: center;
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        width: min(420px, calc(100vw - 40px));
+        padding: 13px 14px;
+        border: 1px solid #f1beb9;
+        border-radius: var(--radius);
+        background: #fff5f4;
+        color: var(--danger);
+        box-shadow: var(--shadow);
+        transform: translateY(120%);
+        transition: transform 0.18s ease;
+        z-index: 5;
+      }
+
+      .toast.show {
+        transform: translateY(0);
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .query-panel {
+          position: static;
+        }
+
+        .table-wrap {
+          max-height: none;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .shell {
+          width: min(100% - 20px, 1440px);
+          padding-top: 14px;
+        }
+
+        .topbar,
+        .results-head,
+        .footer-bar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .status,
+        .tools,
+        .actions,
+        .pager {
+          width: 100%;
+        }
+
+        .tools,
+        .actions {
+          justify-content: stretch;
+        }
+
+        .primary,
+        .secondary,
+        .search,
+        select {
+          width: 100%;
+        }
+
+        .page-label {
+          flex: 1;
+        }
+
+        textarea {
+          min-height: 138px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">SQL</div>
+          <div>
+            <h1>sqlite-llm</h1>
+            <p class="subhead">Ask configured SQLite databases in natural language.</p>
+          </div>
+        </div>
+        <div class="status" id="status" aria-live="polite">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Checking server</span>
+        </div>
+      </header>
+
+      <section class="grid">
+        <form class="panel query-panel" id="queryForm">
+          <label class="field-label" for="question">Question</label>
+          <textarea
+            id="question"
+            name="question"
+            autocomplete="off"
+            spellcheck="true"
+            placeholder="Show the top 10 organisations by tender count"
+            required
+          ></textarea>
+          <div class="actions">
+            <button class="primary" id="submitBtn" type="submit">Run query</button>
+            <button class="secondary" id="clearBtn" type="button">Clear</button>
+            <span class="spinner" aria-hidden="true"></span>
+          </div>
+
+          <div class="meta-block">
+            <div class="label-row">
+              <span>Databases</span>
+            </div>
+            <div class="pills" id="databasePills">
+              <span class="pill muted">Loading</span>
+            </div>
+          </div>
+
+          <div class="meta-block">
+            <div class="label-row">
+              <span>Examples</span>
+            </div>
+            <div class="pills" id="examples">
+              <button class="example" type="button">Show the top 10 organisations by tender count</button>
+              <button class="example" type="button">Which tenders close soonest?</button>
+              <button class="example" type="button">Count tenders by status</button>
+              <button class="example" type="button">Show recent award contracts with contract value</button>
+            </div>
+          </div>
+
+          <div class="notice">
+            Results are limited by server configuration and depend on the generated read-only SQL.
+          </div>
+        </form>
+
+        <section class="panel results-panel" aria-live="polite">
+          <div class="results-head">
+            <div class="results-title">
+              <h2>Results</h2>
+              <div class="result-count" id="resultCount">No query run yet</div>
+            </div>
+            <div class="tools">
+              <input class="search" id="filterInput" type="search" placeholder="Filter results" disabled>
+              <select id="pageSize" aria-label="Rows per page" disabled>
+                <option value="25">25 rows</option>
+                <option value="50" selected>50 rows</option>
+                <option value="100">100 rows</option>
+                <option value="250">250 rows</option>
+              </select>
+              <button class="secondary" id="downloadBtn" type="button" disabled>CSV</button>
+            </div>
+          </div>
+          <div class="sql-block" id="sqlBlock" hidden>
+            <div class="sql-head">
+              <span class="sql-title">Executed SQL</span>
+              <button class="secondary" id="copySqlBtn" type="button">Copy</button>
+            </div>
+            <pre class="sql-code" id="sqlCode"></pre>
+          </div>
+          <div class="table-wrap" id="tableWrap">
+            <div class="empty-state">
+              <div class="empty-box">
+                <strong>Ready</strong>
+                <span>No result set loaded.</span>
+              </div>
+            </div>
+          </div>
+          <div class="footer-bar">
+            <span class="muted" id="rangeLabel">0 rows</span>
+            <div class="pager">
+              <button class="secondary" id="prevPage" type="button" disabled>Prev</button>
+              <span class="page-label" id="pageLabel">Page 0 of 0</span>
+              <button class="secondary" id="nextPage" type="button" disabled>Next</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="alert"></div>
+
+    <script>
+      const state = {
+        rows: [],
+        columns: [],
+        sql: '',
+        filter: '',
+        sortKey: '',
+        sortDir: 'asc',
+        page: 1,
+        pageSize: 50,
+      };
+
+      const els = {
+        form: document.querySelector('#queryForm'),
+        question: document.querySelector('#question'),
+        submitBtn: document.querySelector('#submitBtn'),
+        clearBtn: document.querySelector('#clearBtn'),
+        databasePills: document.querySelector('#databasePills'),
+        examples: document.querySelector('#examples'),
+        statusDot: document.querySelector('#statusDot'),
+        statusText: document.querySelector('#statusText'),
+        resultCount: document.querySelector('#resultCount'),
+        filterInput: document.querySelector('#filterInput'),
+        pageSize: document.querySelector('#pageSize'),
+        downloadBtn: document.querySelector('#downloadBtn'),
+        sqlBlock: document.querySelector('#sqlBlock'),
+        sqlCode: document.querySelector('#sqlCode'),
+        copySqlBtn: document.querySelector('#copySqlBtn'),
+        tableWrap: document.querySelector('#tableWrap'),
+        rangeLabel: document.querySelector('#rangeLabel'),
+        prevPage: document.querySelector('#prevPage'),
+        nextPage: document.querySelector('#nextPage'),
+        pageLabel: document.querySelector('#pageLabel'),
+        toast: document.querySelector('#toast'),
+      };
+
+      els.form.addEventListener('submit', handleSubmit);
+      els.clearBtn.addEventListener('click', clearResults);
+      els.filterInput.addEventListener('input', () => {
+        state.filter = els.filterInput.value.trim().toLowerCase();
+        state.page = 1;
+        render();
+      });
+      els.pageSize.addEventListener('change', () => {
+        state.pageSize = Number(els.pageSize.value);
+        state.page = 1;
+        render();
+      });
+      els.prevPage.addEventListener('click', () => {
+        state.page = Math.max(1, state.page - 1);
+        render();
+      });
+      els.nextPage.addEventListener('click', () => {
+        state.page += 1;
+        render();
+      });
+      els.downloadBtn.addEventListener('click', downloadCsv);
+      els.copySqlBtn.addEventListener('click', copySql);
+      els.examples.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        els.question.value = button.textContent.trim();
+        els.question.focus();
+      });
+
+      boot();
+
+      async function boot() {
+        try {
+          const [health, databases] = await Promise.all([
+            fetchJson('/health'),
+            fetchJson('/databases'),
+          ]);
+
+          if (health.ok) {
+            els.statusDot.classList.add('ok');
+            els.statusText.textContent = 'Server online';
+          }
+
+          renderDatabases(databases.databases || []);
+        } catch (error) {
+          els.statusDot.classList.remove('ok');
+          els.statusText.textContent = 'Server unavailable';
+          renderDatabases([]);
+          showToast(error.message);
+        }
+      }
+
+      async function handleSubmit(event) {
+        event.preventDefault();
+        const question = els.question.value.trim();
+        if (!question) return;
+
+        setLoading(true);
+        try {
+          const payload = await fetchJson('/query', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ question }),
+          });
+
+          if (!payload || !Array.isArray(payload.rows)) {
+            throw new Error('Server returned an unexpected response shape.');
+          }
+
+          state.sql = typeof payload.sql === 'string' ? payload.sql : '';
+          state.rows = payload.rows;
+          state.columns = inferColumns(payload.rows);
+          state.filter = '';
+          state.sortKey = '';
+          state.sortDir = 'asc';
+          state.page = 1;
+          els.filterInput.value = '';
+          renderSql();
+          render();
+        } catch (error) {
+          renderError(error.message);
+          showToast(error.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : null;
+
+        if (!response.ok) {
+          throw new Error(data?.error || `Request failed with HTTP ${response.status}`);
+        }
+
+        return data;
+      }
+
+      function renderDatabases(databases) {
+        els.databasePills.innerHTML = '';
+        if (!databases.length) {
+          els.databasePills.append(pill('None found', true));
+          return;
+        }
+
+        for (const db of databases) {
+          els.databasePills.append(pill(db.alias || 'unknown'));
+        }
+      }
+
+      function pill(text, muted = false) {
+        const span = document.createElement('span');
+        span.className = muted ? 'pill muted' : 'pill';
+        span.textContent = text;
+        return span;
+      }
+
+      function render() {
+        const rows = getVisibleRows();
+        const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+        state.page = Math.min(state.page, totalPages);
+
+        const start = rows.length ? (state.page - 1) * state.pageSize : 0;
+        const pageRows = rows.slice(start, start + state.pageSize);
+        const end = start + pageRows.length;
+
+        setResultControls(state.rows.length > 0);
+        els.resultCount.textContent = describeCount(rows.length, state.rows.length);
+        els.rangeLabel.textContent = rows.length
+          ? `Showing ${start + 1}-${end} of ${rows.length}`
+          : '0 rows';
+        els.pageLabel.textContent = rows.length ? `Page ${state.page} of ${totalPages}` : 'Page 0 of 0';
+        els.prevPage.disabled = !rows.length || state.page <= 1;
+        els.nextPage.disabled = !rows.length || state.page >= totalPages;
+
+        if (!state.rows.length) {
+          renderEmpty('No rows returned', 'The query completed successfully, but no records matched.');
+          return;
+        }
+
+        if (!rows.length) {
+          renderEmpty('No matching rows', 'Adjust the result filter to see more records.');
+          return;
+        }
+
+        renderTable(pageRows);
+      }
+
+      function renderTable(rows) {
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const tbody = document.createElement('tbody');
+        const headerRow = document.createElement('tr');
+
+        for (const column of state.columns) {
+          const th = document.createElement('th');
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = column;
+          if (state.sortKey === column) {
+            button.append(` ${state.sortDir === 'asc' ? 'up' : 'down'}`);
+          }
+          button.addEventListener('click', () => toggleSort(column));
+          th.append(button);
+          headerRow.append(th);
+        }
+
+        thead.append(headerRow);
+
+        for (const row of rows) {
+          const tr = document.createElement('tr');
+          for (const column of state.columns) {
+            const value = row[column];
+            const td = document.createElement('td');
+            if (isNumeric(value)) td.classList.add('numeric');
+            td.append(formatValue(value));
+            tr.append(td);
+          }
+          tbody.append(tr);
+        }
+
+        table.append(thead, tbody);
+        els.tableWrap.replaceChildren(table);
+      }
+
+      function renderEmpty(title, message) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'empty-state';
+        wrapper.innerHTML = `<div class="empty-box"><strong></strong><span></span></div>`;
+        wrapper.querySelector('strong').textContent = title;
+        wrapper.querySelector('span').textContent = message;
+        els.tableWrap.replaceChildren(wrapper);
+      }
+
+      function renderError(message) {
+        setResultControls(false);
+        els.sqlBlock.hidden = true;
+        els.resultCount.textContent = 'Query failed';
+        els.rangeLabel.textContent = '0 rows';
+        els.pageLabel.textContent = 'Page 0 of 0';
+        els.prevPage.disabled = true;
+        els.nextPage.disabled = true;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'error-state';
+        const box = document.createElement('div');
+        box.className = 'empty-box';
+        const strong = document.createElement('strong');
+        strong.textContent = 'Query failed';
+        const span = document.createElement('span');
+        span.textContent = message;
+        box.append(strong, span);
+        wrapper.append(box);
+        els.tableWrap.replaceChildren(wrapper);
+      }
+
+      function renderSql() {
+        if (state.sql) {
+          els.sqlCode.textContent = state.sql;
+          els.sqlBlock.hidden = false;
+        } else {
+          els.sqlBlock.hidden = true;
+        }
+        els.copySqlBtn.textContent = 'Copy';
+      }
+
+      async function copySql() {
+        if (!state.sql) return;
+        try {
+          await navigator.clipboard.writeText(state.sql);
+          els.copySqlBtn.textContent = 'Copied';
+          clearTimeout(copySql.timer);
+          copySql.timer = setTimeout(() => {
+            els.copySqlBtn.textContent = 'Copy';
+          }, 1600);
+        } catch (error) {
+          showToast('Could not copy SQL to clipboard');
+        }
+      }
+
+      function getVisibleRows() {
+        let rows = state.rows;
+
+        if (state.filter) {
+          rows = rows.filter((row) =>
+            state.columns.some((column) => valueToText(row[column]).toLowerCase().includes(state.filter)),
+          );
+        }
+
+        if (state.sortKey) {
+          rows = [...rows].sort((a, b) => compareValues(a[state.sortKey], b[state.sortKey], state.sortDir));
+        }
+
+        return rows;
+      }
+
+      function inferColumns(rows) {
+        const columns = [];
+        const seen = new Set();
+        for (const row of rows) {
+          for (const key of Object.keys(row || {})) {
+            if (!seen.has(key)) {
+              seen.add(key);
+              columns.push(key);
+            }
+          }
+        }
+        return columns;
+      }
+
+      function toggleSort(column) {
+        if (state.sortKey === column) {
+          state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortKey = column;
+          state.sortDir = 'asc';
+        }
+        state.page = 1;
+        render();
+      }
+
+      function compareValues(a, b, direction) {
+        const emptyA = a === null || a === undefined || a === '';
+        const emptyB = b === null || b === undefined || b === '';
+        if (emptyA && emptyB) return 0;
+        if (emptyA) return 1;
+        if (emptyB) return -1;
+
+        let result;
+        if (isNumeric(a) && isNumeric(b)) {
+          result = Number(a) - Number(b);
+        } else {
+          result = String(a).localeCompare(String(b), undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
+        }
+
+        return direction === 'asc' ? result : -result;
+      }
+
+      function formatValue(value) {
+        const span = document.createElement('span');
+        span.className = 'cell';
+
+        if (value === null || value === undefined) {
+          span.classList.add('null');
+          span.textContent = 'NULL';
+          return span;
+        }
+
+        const text = valueToText(value);
+        if (isUrl(text)) {
+          const link = document.createElement('a');
+          link.href = text;
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+          link.textContent = text;
+          span.append(link);
+          return span;
+        }
+
+        span.textContent = text;
+        return span;
+      }
+
+      function valueToText(value) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+      }
+
+      function isNumeric(value) {
+        if (value === null || value === undefined || value === '') return false;
+        return !Number.isNaN(Number(value)) && Number.isFinite(Number(value));
+      }
+
+      function isUrl(value) {
+        return /^https?:\/\/[^\s]+$/i.test(value);
+      }
+
+      function describeCount(visible, total) {
+        if (!total) return '0 rows';
+        if (visible === total) return `${total} ${total === 1 ? 'row' : 'rows'}`;
+        return `${visible} of ${total} rows`;
+      }
+
+      function setResultControls(enabled) {
+        els.filterInput.disabled = !enabled;
+        els.pageSize.disabled = !enabled;
+        els.downloadBtn.disabled = !enabled;
+      }
+
+      function setLoading(isLoading) {
+        document.body.classList.toggle('is-loading', isLoading);
+        els.submitBtn.disabled = isLoading;
+        els.clearBtn.disabled = isLoading;
+        els.question.disabled = isLoading;
+      }
+
+      function clearResults() {
+        els.question.value = '';
+        state.rows = [];
+        state.columns = [];
+        state.sql = '';
+        state.filter = '';
+        state.sortKey = '';
+        state.sortDir = 'asc';
+        state.page = 1;
+        els.filterInput.value = '';
+        setResultControls(false);
+        els.resultCount.textContent = 'No query run yet';
+        els.rangeLabel.textContent = '0 rows';
+        els.pageLabel.textContent = 'Page 0 of 0';
+        els.prevPage.disabled = true;
+        els.nextPage.disabled = true;
+        els.sqlBlock.hidden = true;
+        els.copySqlBtn.textContent = 'Copy';
+        renderEmpty('Ready', 'No result set loaded.');
+        els.question.focus();
+      }
+
+      function downloadCsv() {
+        const rows = getVisibleRows();
+        if (!rows.length) return;
+
+        const csv = [
+          state.columns.map(csvEscape).join(','),
+          ...rows.map((row) => state.columns.map((column) => csvEscape(valueToText(row[column]))).join(',')),
+        ].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'sqlite-llm-results.csv';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function csvEscape(value) {
+        const text = String(value ?? '');
+        if (/[",\n\r]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+        return text;
+      }
+
+      function showToast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add('show');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => els.toast.classList.remove('show'), 4800);
+      }
+    </script>
+  </body>
+</html>

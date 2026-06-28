@@ -1,0 +1,22 @@
+server:
+  host: 127.0.0.1
+  port: 3100
+
+llm:
+  baseUrl: "https://openrouter.ai/api/v1"
+  apiKey: "<your api key>"
+  model: "deepseek/deepseek-v4-pro"
+  temperature: 0
+
+query:
+  maxAttempts: 4
+  maxRows: 2000
+
+context:
+  path: ./schema-context.md
+
+databases:
+  - alias: aoc
+    path: ./data/aoc_tenders.db
+  - alias: tenders
+    path: ./data/tenders_vps.db

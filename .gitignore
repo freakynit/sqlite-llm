@@ -1,0 +1,11 @@
+node_modules/
+**/*.db
+**/*.db.wal
+**/*.db-shm
+**/*.db-wal
+**/*.DS_Store
+logs
+package-lock.json
+*.iml
+.idea
+aux_table_context.md
