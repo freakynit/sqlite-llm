@@ -1,7 +1,7 @@
 # sqlite-llm
 
-Small unauthenticated HTTP API for querying one or more SQLite databases with natural
-language.
+Small unauthenticated service for querying one or more SQLite databases with natural
+language. It ships with a built-in web UI and a JSON HTTP API.
 
 The service sends the user question plus a raw markdown schema/context file to an
 OpenAI-compatible chat model. The model must return one SQLite query inside a
@@ -25,6 +25,15 @@ Edit `config.yaml`, then start:
 ```bash
 npm start
 ```
+
+Once running, open the web UI in your browser:
+
+```
+http://127.0.0.1:3100
+```
+
+(Adjust host/port to match your `config.yaml`.) The same server also exposes the
+JSON API documented below.
 
 Use a custom config path:
 
@@ -68,6 +77,29 @@ ATTACH DATABASE '{path}' AS "{alias}"
 Aliases must start with a letter or underscore and contain only letters, numbers, and
 underscores. In the context markdown, describe tables using these aliases, for example
 `tenders.tenders` or `aoc.aoc_tenders`.
+
+## Web UI
+
+The server serves a single-page UI from `index.html` at `/` and `/index.html`. There
+is no separate build step — the file is served as-is by Express.
+
+When the page loads it calls `GET /health` and `GET /databases` to show server status
+and the configured database aliases. Typing a natural-language question and clicking
+**Run query** posts to `POST /query`.
+
+Features:
+
+- Question textarea with one-click example prompts.
+- Live server status indicator and database alias pills.
+- The **executed SQL query** returned by the server, shown above the results with a
+  **Copy** button.
+- Results table with sortable columns, a filter box, page-size selection, and
+  pagination.
+- **CSV** download of the current (filtered/sorted) result set.
+- Error toasts and an inline error state when a query fails.
+
+The UI only talks to this service over the same origin; it expects the `POST /query`
+response shape documented under the API section.
 
 ## API
 
